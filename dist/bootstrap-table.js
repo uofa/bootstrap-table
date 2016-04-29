@@ -10,7 +10,20 @@
     // TOOLS DEFINITION
     // ======================
 
-    var cachedWidth = null;
+    var cellHeight = 37, // update css if changed
+        cachedWidth = null,
+        arrowAsc = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABMAAAATCAMAAABFjsb+AAAARVBMVEX///9K' +
+        'idxKidxKidxKidxKidxKidxKidxKidxKidxKidxKidxKidxKidxKidxKidxKidxKidxKidxKidxKidxKidxKidz0nvt7A' +
+        'AAAFnRSTlMABgoMIio8QFhganSRnbm/2+Pv8/f5lXKEXwAAADxJREFUeAFjIBUw8TBiiHGLcaELsQqKCbCgifGKiYnxoA' +
+        'qxCwHFhNmQhZj5xUCAD9kaTlEREBDlYBhOAABlwwJ4WrNuwAAAAABJRU5ErkJggg==',
+        arrowBoth = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABMAAAATCAQAAADYWf5HAAAAkElEQVQoz7X' +
+        'QMQ5AQBCF4dWQSJxC5wwax1Cq1e7BAdxD5SL+Tq/QCM1oNiJidwox0355mXnG/DrEtIQ6azio' +
+        'NZQxI0ykPhTQIwhCR+BmBYtlK7kLJYwWCcJA9M4qdrZrd8pPjZWPtOqdRQy320YSV17OatFC4eut' +
+        's6z39GYMKRPCTKY9UnPQ6P+GtMRfGtPnBCiqhAeJPmkqAAAAAElFTkSuQmCC',
+        arrowDesc = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABMAAAATCAMAAABFjsb+AAAARVBMVEX///9' +
+        'KidxKidxKidxKidxKidxKidxKidxKidxKidxKidxKidxKidxKidxKidxKidxKidxKidxKidxKidxKidxKidxKidz0nvt7' +
+        'AAAAFnRSTlMABgoMIio8QFhganSRnbm/2+Pv8/f5lXKEXwAAADxJREFUeAFjGFaAQ1QEBEQ5kcQY+cRAgJ8ZWSGbMFBIi' +
+        'B1VNw9QjBfNRBYBMUFWdGu4xLgxrGbkYSLVtQBGBgJ4sqFQxQAAAABJRU5ErkJggg==';
 
     // it only does '%s', and return '' when arguments are undefined
     var sprintf = function (str) {
@@ -229,6 +242,20 @@
         return !!(navigator.userAgent.indexOf("MSIE ") > 0 || !!navigator.userAgent.match(/Trident.*rv\:11\./));
     };
 
+    if (!Object.keys) {
+        Object.keys = function(obj) {
+            var keys = [];
+
+            for (var i in obj) {
+                if (obj.hasOwnProperty(i)) {
+                    keys.push(i);
+                }
+            }
+
+            return keys;
+        };
+    }
+
     // BOOTSTRAP TABLE CLASS DEFINITION
     // ======================
 
@@ -371,7 +398,7 @@
         onLoadSuccess: function (data) {
             return false;
         },
-        onLoadError: function (status) {
+        onLoadError: function (status, data) {
             return false;
         },
         onColumnSwitch: function (field, checked) {
@@ -799,7 +826,8 @@
         }
 
         this.$selectAll = this.$header.find('[name="btSelectAll"]');
-        this.$selectAll.off('click').on('click', function () {
+        this.$container.off('click', '[name="btSelectAll"]')
+            .on('click', '[name="btSelectAll"]', function () {
                 var checked = $(this).prop('checked');
                 that[checked ? 'checkAll' : 'uncheckAll']();
                 that.updateSelected();
@@ -846,7 +874,17 @@
         var that = this,
             name = this.options.sortName,
             order = this.options.sortOrder === 'desc' ? -1 : 1,
-            index = $.inArray(this.options.sortName, this.header.fields);
+            index = $.inArray(this.options.sortName, this.header.fields),
+            length = Object.keys(this.data).length;
+
+        // Add current position to data object in order to enable a stable sort
+        // for times when values are compared as equal
+        for (var key in this.data) {
+            if (this.data.hasOwnProperty(key)) {
+                // Save position
+                this.data[key].position = key;
+            }
+        }
 
         if (index !== -1) {
             this.data.sort(function (a, b) {
@@ -869,7 +907,21 @@
                     bb = '';
                 }
 
-                // IF both values are numeric, do a numeric comparison
+                // Found to be equal
+                if (aa === bb) {
+                    var aa_position = getItemField(a, 'position'),
+                        bb_position = getItemField(b, 'position');
+
+                    if (order == 1) {
+                        aa = (length - aa_position),
+                        bb = (length - bb_position);
+                    } else {
+                        aa = aa_position,
+                        bb = bb_position;
+                    }
+                }
+
+                // If both values are numeric, do a numeric comparison
                 if ($.isNumeric(aa) && $.isNumeric(bb)) {
                     // Convert numerical values form string to float.
                     aa = parseFloat(aa);
@@ -878,10 +930,6 @@
                         return order * -1;
                     }
                     return order;
-                }
-
-                if (aa === bb) {
-                    return 0;
                 }
 
                 // If value is not a string, convert to string
@@ -908,7 +956,11 @@
             this.options.sortOrder = this.options.sortOrder === 'asc' ? 'desc' : 'asc';
         } else {
             this.options.sortName = $this.data('field');
-            this.options.sortOrder = $this.data('order') === 'asc' ? 'desc' : 'asc';
+            if($this_.find('.sortable').hasClass('both')){
+                this.options.sortOrder = 'asc';
+            } else {
+                this.options.sortOrder = $this.data('order') === 'asc' ? 'desc' : 'asc';
+            }
         }
         this.trigger('sort', this.options.sortName, this.options.sortOrder);
 
@@ -1864,7 +1916,7 @@
         var that = this;
 
         $.each(this.$header.find('th'), function (i, th) {
-            $(th).find('.sortable').removeClass('desc asc').addClass($(th).data('field') === that.options.sortName ? that.options.sortOrder : 'both');
+            $(th).find('.sortable').removeClass('desc asc both').addClass($(th).data('field') === that.options.sortName ? that.options.sortOrder : 'both');
         });
     };
 
