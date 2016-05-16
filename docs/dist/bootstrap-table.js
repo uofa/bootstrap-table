@@ -762,7 +762,7 @@
                     sprintf(' colspan="%s"', column.colspan),
                     sprintf(' data-field="%s"', column.field),
                     "tabindex='0'",
-                    "scope='row'",
+                    "scope='col'",
                     '>');
 
                 html.push(sprintf('<div class="th-inner %s">', that.options.sortable && column.sortable ?
